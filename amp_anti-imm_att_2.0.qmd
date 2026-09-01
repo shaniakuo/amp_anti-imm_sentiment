@@ -1,0 +1,843 @@
+---
+title: "amp_anti-imm_att_2.0"
+format: html
+editor: visual
+execute:
+  dir: '/Users/shaniakuo/Library/CloudStorage/GoogleDrive-kuo00063@umn.edu/.shortcut-targets-by-id/1mv_yKA1EnZV85eFlImCcbT0SMYFbxVBv/AMP Master Drive/AMP Immigration'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = '/Users/shaniakuo/Library/CloudStorage/GoogleDrive-kuo00063@umn.edu/.shortcut-targets-by-id/1mv_yKA1EnZV85eFlImCcbT0SMYFbxVBv/AMP Master Drive/AMP Immigration')
+```
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(haven)
+library(brms)
+library(modelsummary)
+library(dplyr)
+library(gtsummary)
+library(flextable)
+library(tidybayes)
+library(ggplot2)
+library(tidyr)
+library(gt)
+library(bayesplot)
+library(marginaleffects)
+library(modelr)
+library(cowplot)
+library(gmodels)
+library(patchwork)
+```
+
+```{r}
+getwd()
+```
+
+# Load Data
+
+```{r}
+amp_data <- read_dta("data/AMP3_WORKING.dta")
+```
+
+## Load Models and Adjusted Draws
+
+```{r}
+load("objects/models.RData")
+aap_m1_ideo  <- readRDS("objects/aap_m1_ideo.rds")
+aap_m1_party <- readRDS("objects/aap_m1_party.rds")
+aap_m2_ideo  <- readRDS("objects/aap_m2_ideo.rds")
+aap_m2_party <- readRDS("objects/aap_m2_party.rds")
+aap_m3_ideo  <- readRDS("objects/aap_m3_ideo.rds")
+aap_m3_party <- readRDS("objects/aap_m3_party.rds")
+aap_m4_ideo  <- readRDS("objects/aap_m4_ideo.rds")
+aap_m4_party <- readRDS("objects/aap_m4_party.rds")
+```
+
+## Select Variables
+
+```{r}
+amp_select <- amp_data|>
+  dplyr::select(
+    RACETHNICITY,
+    IDEO,
+    imm_shared = V38D,
+    imm_safety = V41SAFETY_4,
+    imm_jobs = V41JOBS_4,
+    imm_welfare = V41WELFARE_4,
+    imm_morals = V41MORALS_4,
+    PartyID7,
+    PartyID5,
+    AGE,
+    GENDER,
+    EDUC5,
+    INCOME9,
+    ethnicity_importance = V18IMPETHNICITY,
+    ethnicity_proud = V19PROUDETHNICITY,
+    race_proud = V14A,
+    race_importance = V13IMPRACE,
+    ethnicity = V17ETHNICITY,
+    limit_imm = V43A,
+    english_imm = V43B,
+    amnesty_imm = V43C,
+    law_imm = V43D,
+    V21RELIGPREF,
+    V2024ELECTION,
+    REGION9,
+    CONPROT
+  )
+```
+
+## Clean variables
+
+```{r}
+amp_clean <- amp_select|>
+  mutate(
+    race = case_when(
+      RACETHNICITY == 1 ~ 'White',
+      RACETHNICITY == 2 ~ 'Black',
+      RACETHNICITY == 3 ~ NA_character_,
+      RACETHNICITY == 4 ~ 'Hispanic',
+      RACETHNICITY == 5 ~ NA_character_,
+      RACETHNICITY == 6 ~ 'AAPI',
+      TRUE ~ NA_character_),
+    race = fct_relevel(race, "White")
+  ) |>
+  mutate(
+    region = case_when(
+      REGION9 == 1 ~ "New England",
+      REGION9 == 2 ~ "Mid-Atlantic",
+      REGION9 == 3 ~ "East-North Central",
+      REGION9 == 4 ~ "West-North Central",
+      REGION9 == 5 ~ "South Atlantic",
+      REGION9 == 6 ~ "East-South Central",
+      REGION9 == 7 ~ "West-South Central",
+      REGION9 == 8 ~ "Mountain",
+      REGION9 == 9 ~ "Pacific",
+      TRUE ~ NA_character_)) |>
+  mutate(
+    ideology = case_when(
+      IDEO == -1 ~ NA_character_,
+      IDEO == 1 ~ 'Very Liberal',
+      IDEO == 2 ~ 'Somewhat Liberal',
+      IDEO == 3 ~ 'Moderate',
+      IDEO == 4 ~ 'Somewhat Conservative',
+      IDEO == 5 ~ 'Very Conservative',
+      TRUE ~ NA_character_)) |>
+  mutate(ideology = fct_relevel(ideology, "Moderate")) |>
+  mutate(
+    party_id_7 = case_when(
+      PartyID7 == -1 ~ NA_character_,
+      PartyID7 == 1 ~ "Strong Democrat",
+      PartyID7 == 2 ~ "Not so Strong Democrat",
+      PartyID7 == 3 ~ "Lean Democrat",
+      PartyID7 == 4 ~ "Don't Lean",
+      PartyID7 == 5 ~ "Lean Republican",
+      PartyID7 == 6 ~ "Not so Strong Republican",
+      PartyID7 == 7 ~ "Strong Republican",
+      TRUE ~ NA_character_)) |>
+  mutate(party_id = fct_relevel(party_id_7, "Don't Lean"))|>
+  mutate(
+    party_id = case_when(
+      PartyID5 == -1 ~ NA_character_,
+      PartyID5 == 1 ~ "Democrat",
+      PartyID5 == 2 ~ "Lean Democrat",
+      PartyID5 == 3 ~ "Don't Lean/Independent/None",
+      PartyID5 == 4 ~ "Lean Republican",
+      PartyID5 == 5 ~ "Republican",
+      TRUE ~ NA_character_)) |>
+  drop_na(party_id) |>
+  mutate(party_id = fct_relevel(party_id, "Don't Lean/Independent/None"))|>
+  mutate(
+    imm_safety_recode = case_when(
+      imm_safety == 0 ~ 'No',
+      imm_safety == 1 ~ 'Yes',
+      TRUE ~ NA_character_)) |>
+  mutate(
+    imm_shared_recode = case_when(
+      imm_shared == 1 ~ 'Almost completely agree',
+      imm_shared == 2 ~ 'Somewhat agree',
+      imm_shared == 3 ~ 'Somewhat disagree',
+      imm_shared == 4 ~ 'Do not agree at all',
+      TRUE ~ NA_character_)) |>
+  mutate(
+    imm_jobs_recode = case_when(
+      imm_jobs == 0 ~ 'No',
+      imm_jobs == 1 ~ 'Yes',
+      TRUE ~ NA_character_)) |>
+  mutate(
+    imm_welfare_recode = case_when(
+      imm_welfare == 0 ~ 'No',
+      imm_welfare == 1 ~ 'Yes',
+      TRUE ~ NA_character_))|>
+  mutate(
+    imm_morals_recode = case_when(
+      imm_morals == 0 ~ 'No',
+      imm_morals == 1 ~ 'Yes',
+      TRUE ~ NA_character_))|>
+  mutate(
+    gender = case_when(
+      GENDER == 1 ~ "Male",
+      GENDER == 2 ~ "Female",
+      TRUE ~ NA_character_))|>
+  mutate(
+    education = case_when(
+      EDUC5 == 1 ~ "Less than high school",
+      EDUC5 == 2 ~ 'High School Degree',
+      EDUC5 == 3 ~ 'Some college/Associates',
+      EDUC5 == 4 ~ 'College graduate',
+      EDUC5 == 5 ~ 'Post grad study/professional degree',
+      TRUE ~ NA_character_),
+    education = fct_relevel(education, "College graduate")
+  ) |>
+  mutate(
+    income = case_when(
+      INCOME9 == 1 ~ 'Under $10,000',
+      INCOME9 == 2 ~ '$10,000 to under $20,000',
+      INCOME9 == 3 ~ '$20,000 to under $30,000',
+      INCOME9 == 4 ~ '$30,000 to under $40,000',
+      INCOME9 == 5 ~ '$40,000 to under $50,000',
+      INCOME9 == 6 ~ '$50,000 to under $75,000',
+      INCOME9 == 7 ~ '$75,000 to under $100,000',
+      INCOME9 == 8 ~ '$100,000 to under $150,000',
+      INCOME9 == 9 ~ '$150,000 or more',
+      TRUE ~ NA_character_)) |>
+  mutate(ethn_imp_recode = case_when(
+    ethnicity_importance == 1 ~ 'Very important',
+    ethnicity_importance == 2 ~ 'Somewhat important',
+    ethnicity_importance == 3 ~ 'Not very important',
+    ethnicity_importance == 4 ~ 'Not important at all',
+    TRUE ~ NA_character_)) |>
+  mutate(ethn_proud_recode = case_when(
+    ethnicity_proud == 1 ~ 'Strongly agree',
+    ethnicity_proud == 2 ~ 'Somewhat agree',
+    ethnicity_proud == 3 ~ 'Somewhat disagree',
+    ethnicity_proud == 4 ~ 'Strongly disagree',
+    TRUE ~ NA_character_)) |>
+  mutate(race_imp_recode = case_when(
+    race_importance == 1 ~ 'Very important',
+    race_importance == 2 ~ 'Somewhat important',
+    race_importance == 3 ~ 'Not very important',
+    race_importance == 4 ~ 'Not important at all',
+    TRUE ~ NA_character_)) |>
+  mutate(limit_imm_reverse = case_when(
+    limit_imm == 1 ~ 4,
+    limit_imm == 2 ~ 3,
+    limit_imm == 3 ~ 2,
+    limit_imm == 4 ~ 1,
+    limit_imm == 77 ~ NA_real_,
+    limit_imm == 98 ~ NA_real_,
+    TRUE ~ NA_real_)) |>
+  mutate(limit_imm_recode = case_when(
+    limit_imm_reverse == 1 ~ 'Strongly disagree',
+    limit_imm_reverse == 2 ~ 'Somewhat disagree',
+    limit_imm_reverse == 3 ~ 'Somewhat agree',
+    limit_imm_reverse == 4 ~ 'Strongly agree',
+    TRUE ~ NA_character_)) |>
+  mutate(english_imm_reverse = case_when(
+    english_imm == 1 ~ 4,
+    english_imm == 2 ~ 3,
+    english_imm == 3 ~ 2,
+    english_imm == 4 ~ 1,
+    english_imm == 77 ~ NA_real_,
+    english_imm == 98 ~ NA_real_,
+    TRUE ~ NA_real_)) |>
+  mutate(english_imm_recode = case_when(
+    english_imm_reverse == 1 ~ 'Strongly disagree',
+    english_imm_reverse == 2 ~ 'Somewhat disagree',
+    english_imm_reverse == 3 ~ 'Somewhat agree',
+    english_imm_reverse == 4 ~ 'Strongly agree',
+    TRUE ~ NA_character_)) |>
+  mutate(
+    amnesty_imm_recode = case_when(
+      amnesty_imm == 1 ~ "Strongly agree",
+      amnesty_imm == 2 ~ "Somewhat agree",
+      amnesty_imm == 3 ~ "Somewhat disagree",
+      amnesty_imm == 4 ~ "Strongly disagree",
+      TRUE ~ NA_character_)) |>
+  mutate(law_imm_reverse = case_when(
+    law_imm == 1 ~ 4,
+    law_imm == 2 ~ 3,
+    law_imm == 3 ~ 2,
+    law_imm == 4 ~ 1,
+    law_imm == 77 ~ NA_real_,
+    law_imm == 98 ~ NA_real_,
+    TRUE ~ NA_real_)) |>
+  mutate(law_imm_recode = case_when(
+    law_imm_reverse == 1 ~ 'Strongly disagree',
+    law_imm_reverse == 2 ~ 'Somewhat disagree',
+    law_imm_reverse == 3 ~ 'Somewhat agree',
+    law_imm_reverse == 4 ~ 'Strongly agree',
+    TRUE ~ NA_character_)) |>
+  mutate(voting = case_when(
+    V2024ELECTION == 1 ~ 'Donald Trump',
+    V2024ELECTION == 2 ~ 'Kamala Harris',
+    V2024ELECTION == 3 ~ 'Someone else',
+    V2024ELECTION == 4 ~ 'Do not plan to vote in this race',
+    TRUE ~ NA_character_)) |>
+  mutate(relig_pref_recode = case_when(
+    V21RELIGPREF == 1 ~ 'Protestant',
+    V21RELIGPREF == 2 ~ 'Catholic',
+    V21RELIGPREF == 3 ~ 'Eastern Orthodox',
+    V21RELIGPREF == 4 ~ 'Mormon',
+    V21RELIGPREF == 5 ~ 'Jewish',
+    V21RELIGPREF == 6 ~ 'Muslim',
+    V21RELIGPREF == 7 ~ 'Buddhist',
+    V21RELIGPREF == 8 ~ 'Hindu',
+    V21RELIGPREF == 9 ~ 'Some other religion',
+    V21RELIGPREF == 10 ~ 'Spiritual but not religious',
+    V21RELIGPREF == 11 ~ 'Atheist',
+    V21RELIGPREF == 12 ~ 'Agnostic',
+    V21RELIGPREF == 13 ~ 'Nonreligious',
+    V21RELIGPREF == 14 ~ 'Nothing in particular',
+    TRUE ~ NA_character_)) |>
+  mutate(conprot = case_when(
+    CONPROT == 0 ~ 'No',
+    CONPROT == 1 ~ 'Yes',
+    TRUE ~ NA_character_)
+  )
+```
+
+### Making ordered variables
+
+```{r}
+unique(amp_clean$limit_imm_recode)
+amp_clean$limit_imm_recode <- factor(amp_clean$limit_imm_recode,
+                                     ordered = TRUE,
+                                     levels = c("Strongly disagree", "Somewhat disagree", "Somewhat agree", "Strongly agree"))
+
+
+unique(amp_clean$english_imm_recode)
+amp_clean$english_imm_recode <- factor(amp_clean$english_imm_recode,
+                                       ordered = TRUE,
+                                       levels = c("Strongly disagree", "Somewhat disagree", "Somewhat agree", "Strongly agree"))
+
+
+unique(amp_clean$amnesty_imm_recode)
+amp_clean$amnesty_imm_recode <- factor(amp_clean$amnesty_imm_recode,
+                                       ordered = TRUE,
+                                       levels = c("Strongly disagree", "Somewhat disagree", "Somewhat agree", "Strongly agree"))
+
+unique(amp_clean$law_imm_recode)
+amp_clean$law_imm_recode <- factor(amp_clean$law_imm_recode,
+                                   ordered = TRUE,
+                                   levels = c("Strongly disagree", "Somewhat disagree", "Somewhat agree", "Strongly agree"))
+```
+
+# Table 1. Demographics
+
+```{r}
+amp_table <- amp_clean |>
+  select(
+    race,
+    AGE,
+    gender,
+    education,
+    income,
+    region,
+    ideology,
+    party_id,
+    limit_imm_recode,
+    english_imm_recode,
+    amnesty_imm_recode,
+    law_imm_recode
+  ) |>
+  mutate(
+    # Education
+    education = factor(education,
+                       levels = c("Less than high school",
+                                  "High School Degree",
+                                  "Some college/Associates",
+                                  "College graduate",
+                                  "Post grad study/professional degree"),
+                       ordered = TRUE),
+    
+    # Income
+    income = factor(income,
+                    levels = c("Under $10,000",
+                               "$10,000 to under $20,000",
+                               "$20,000 to under $30,000",
+                               "$30,000 to under $40,000",
+                               "$40,000 to under $50,000",
+                               "$50,000 to under $75,000",
+                               "$75,000 to under $100,000",
+                               "$100,000 to under $150,000",
+                               "$150,000 or more"),
+                    ordered = TRUE),
+    
+    # Ideology
+    ideology = factor(ideology,
+                      levels = c("Very Liberal",
+                                 "Somewhat Liberal",
+                                 "Moderate",
+                                 "Somewhat Conservative",
+                                 "Very Conservative"),
+                      ordered = TRUE),
+    
+    # Party ID
+    party_id = factor(party_id,
+                      levels = c("Democrat",
+                                 "Lean Democrat",
+                                 "Don't Lean/Independent/None",
+                                 "Lean Republican",
+                                 "Republican"),
+                      ordered = TRUE)) |>
+  tbl_summary(
+    by = race,
+    label = list(
+      AGE ~ "Age",
+      gender ~ "Gender",
+      education ~ "Education",
+      income ~ "Household Income",
+      region ~ "Region",
+      ideology ~ "Ideology",
+      party_id ~ "Party Identification",
+      limit_imm_recode ~ "US Should Limit Immigration",
+      english_imm_recode ~ "Immigrants Should Learn English",
+      amnesty_imm_recode ~ "Persecution Refugees Should Be Able to Come",
+      law_imm_recode ~ "Immigrants Should Not Break the Law"
+    ),
+    statistic = list(
+      AGE ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = list(
+      AGE ~ c(1, 1),
+      all_categorical() ~ c(0, 1)
+    ),
+    missing = "no"
+  ) |>
+  add_overall() |>
+  add_p() |>
+  bold_labels() |>
+  bold_p(t = 0.05) |>
+  modify_caption("**Table 1. Sample Descriptive Statistics by Race/Ethnicity**")
+
+print(amp_table)
+```
+
+# Modeling
+
+## Creating Modeling Dataset
+
+```{r}
+amp_model <- amp_clean |>
+  select(
+    # Outcomes
+    limit_imm_recode,
+    english_imm_recode,
+    amnesty_imm_recode,
+    law_imm_recode,
+    # Key predictors
+    race,
+    ideology,
+    party_id,
+    # Controls
+    gender,
+    education,
+    income,
+    AGE,
+    region,
+    conprot
+  ) |>
+  drop_na()  # drops any row missing ANY of these variables
+```
+
+## Setting Priors
+
+```{r}
+## PRIORS ##################
+priors <- c(
+  prior(normal(0, 3), class = Intercept),
+  prior(normal(0, 1.5), class = b)
+)
+```
+
+## Model 1
+
+```{r}
+m1_ideo <- brms::brm(
+  limit_imm_recode ~ race * ideology +
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m1_party <- brms::brm(
+  limit_imm_recode ~ race * party_id +
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m1_both <- brms::brm(
+  limit_imm_recode ~ race * ideology + race * party_id +
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m1_additive <- brms::brm(
+  limit_imm_recode ~ race + ideology + party_id +
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+```
+
+## Model 2
+
+```{r}
+m2_ideo <- brms::brm(
+  english_imm_recode ~ race * ideology + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m2_party <- brms::brm(
+  english_imm_recode ~ race * party_id + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m2_both <- brms::brm(
+  english_imm_recode ~ race * ideology + race * party_id + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m2_additive <- brms::brm(
+  english_imm_recode ~ race + ideology + party_id + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+```
+
+## Model 3
+
+```{r}
+m3_ideo <- brms::brm(
+  amnesty_imm_recode ~ race * ideology + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m3_party <- brms::brm(
+  amnesty_imm_recode ~ race * party_id + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m3_both <- brms::brm(
+  amnesty_imm_recode ~ race * ideology + race * party_id + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m3_additive <- brms::brm(
+  amnesty_imm_recode ~ race + ideology + party_id + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+```
+
+## Model 4
+
+```{r}
+m4_ideo <- brms::brm(
+  law_imm_recode ~ race * ideology + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m4_party <- brms::brm(
+  law_imm_recode ~ race * party_id + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m4_both <- brms::brm(
+  law_imm_recode ~ race * ideology + race * party_id + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+m4_additive <- brms::brm(
+  law_imm_recode ~ race + ideology + party_id + 
+    gender + education + income + AGE + region,
+  data = amp_model,
+  family = cumulative("logit"),
+  prior = priors,
+  backend = "cmdstanr",
+  chains = 4, cores = 4, seed = 1234
+)
+
+```
+
+## Save Models
+
+```{r}
+save(m1_ideo, m1_party, m1_both, m1_additive,
+     m2_ideo, m2_party, m2_both, m2_additive,
+     m3_ideo, m3_party, m3_both, m3_additive,
+     m4_ideo, m4_party, m4_both, m4_additive,
+     file = "models.RData")
+```
+
+# LOO Comparisons
+
+```{r}
+# M1
+m1_ideo     <- add_criterion(m1_ideo,     "loo")
+m1_party    <- add_criterion(m1_party,    "loo")
+m1_both     <- add_criterion(m1_both,     "loo")
+m1_additive <- add_criterion(m1_additive, "loo")
+loo_m1 <- loo_compare(m1_ideo, m1_party, m1_both, m1_additive)
+print(loo_m1)
+
+# M2
+m2_ideo     <- add_criterion(m2_ideo,     "loo")
+m2_party    <- add_criterion(m2_party,    "loo")
+m2_both     <- add_criterion(m2_both,     "loo")
+m2_additive <- add_criterion(m2_additive, "loo")
+loo_m2 <- loo_compare(m2_ideo, m2_party, m2_both, m2_additive)
+print(loo_m2)
+
+# M3
+m3_ideo     <- add_criterion(m3_ideo,     "loo")
+m3_party    <- add_criterion(m3_party,    "loo")
+m3_both     <- add_criterion(m3_both,     "loo")
+m3_additive <- add_criterion(m3_additive, "loo")
+loo_m3 <- loo_compare(m3_ideo, m3_party, m3_both, m3_additive)
+print(loo_m3)
+
+# M4
+m4_ideo     <- add_criterion(m4_ideo,     "loo")
+m4_party    <- add_criterion(m4_party,    "loo")
+m4_both     <- add_criterion(m4_both,     "loo")
+m4_additive <- add_criterion(m4_additive, "loo")
+loo_m4 <- loo_compare(m4_ideo, m4_party, m4_both, m4_additive)
+print(loo_m4)
+
+```
+
+## Hard-Coding the LOO Comparisons for Plotting
+
+```{r}
+loo_m1_df <- as.data.frame(loo_m1) |>
+  tibble::rownames_to_column("model_var") |>
+  mutate(suffix = sub("^m[0-9]+_", "", model_var))
+if (!isTRUE(all.equal(loo_m1_df$elpd_diff[loo_m1_df$suffix == "both"], 0, tolerance = 1e-6))) {
+  warning("M1: Limit Immigration: the 'both' model is NOT the best-fitting model in loo_m1 -- the chart's 'relative to best model (Both)' framing may be wrong for this outcome, check loo_compare() output directly.")
+}
+loo_m1_df <- loo_m1_df |>
+  filter(suffix %in% c("ideo", "party", "additive")) |>
+  mutate(
+    outcome = "M1: Limit Immigration",
+    model = case_when(
+      suffix == "ideo"     ~ "Ideology Only",
+      suffix == "party"    ~ "Party ID Only",
+      suffix == "additive" ~ "Additive"
+    )
+  ) |>
+  select(outcome, model, elpd_diff, se_diff)
+
+# M2
+loo_m2_df <- as.data.frame(loo_m2) |>
+  tibble::rownames_to_column("model_var") |>
+  mutate(suffix = sub("^m[0-9]+_", "", model_var))
+if (!isTRUE(all.equal(loo_m2_df$elpd_diff[loo_m2_df$suffix == "both"], 0, tolerance = 1e-6))) {
+  warning("M2: Learn English: the 'both' model is NOT the best-fitting model in loo_m2 -- the chart's 'relative to best model (Both)' framing may be wrong for this outcome, check loo_compare() output directly.")
+}
+loo_m2_df <- loo_m2_df |>
+  filter(suffix %in% c("ideo", "party", "additive")) |>
+  mutate(
+    outcome = "M2: Learn English",
+    model = case_when(
+      suffix == "ideo"     ~ "Ideology Only",
+      suffix == "party"    ~ "Party ID Only",
+      suffix == "additive" ~ "Additive"
+    )
+  ) |>
+  select(outcome, model, elpd_diff, se_diff)
+
+# M3
+loo_m3_df <- as.data.frame(loo_m3) |>
+  tibble::rownames_to_column("model_var") |>
+  mutate(suffix = sub("^m[0-9]+_", "", model_var))
+if (!isTRUE(all.equal(loo_m3_df$elpd_diff[loo_m3_df$suffix == "both"], 0, tolerance = 1e-6)))  
+  
+  loo_m3_df <- loo_m3_df |>
+  filter(suffix %in% c("ideo", "party", "additive")) |>
+  mutate(
+    outcome = "M3: Persecution Refugees",
+    model = case_when(
+      suffix == "ideo"     ~ "Ideology Only",
+      suffix == "party"    ~ "Party ID Only",
+      suffix == "additive" ~ "Additive"
+    )
+  ) |>
+  select(outcome, model, elpd_diff, se_diff)
+
+# M4
+loo_m4_df <- as.data.frame(loo_m4) |>
+  tibble::rownames_to_column("model_var") |>
+  mutate(suffix = sub("^m[0-9]+_", "", model_var))
+
+loo_m4_df <- loo_m4_df |>
+  filter(suffix %in% c("ideo", "party", "additive")) |>
+  mutate(
+    outcome = "M4: Do Not Break Law",
+    model = case_when(
+      suffix == "ideo"     ~ "Ideology Only",
+      suffix == "party"    ~ "Party ID Only",
+      suffix == "additive" ~ "Additive"
+    )
+  ) |>
+  select(outcome, model, elpd_diff, se_diff)
+```
+
+## Figure 1. LOO Plot
+
+```{r}
+loo_results <- bind_rows(loo_m1_df, loo_m2_df, loo_m3_df, loo_m4_df) |>
+  mutate(
+    model = factor(model,
+                   levels = c("Ideology Only", 
+                              "Party ID Only", 
+                              "Additive")),
+    outcome = factor(outcome,
+                     levels = c("M1: Limit Immigration",
+                                "M2: Learn English",
+                                "M3: Persecution Refugees",
+                                "M4: Do Not Break Law"))
+  ) |>
+  ggplot(aes(x = elpd_diff, y = model, color = model)) +
+  geom_point(size = 3) +
+  geom_errorbarh(
+    aes(xmin = elpd_diff - 2*se_diff, 
+        xmax = elpd_diff + 2*se_diff),
+    height = 0.2
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
+  facet_wrap(~ outcome, ncol = 1) +
+  scale_color_manual(values = c(
+    "Ideology Only" = "#E69F00",
+    "Party ID Only" = "#0072B2", 
+    "Additive" = "#009E73"
+  )) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    title = "Model Comparison: Ideology vs Party ID",
+    subtitle = "ELPD difference relative to best model (Both)",
+    x = "ELPD Difference (higher = worse fit)",
+    y = NULL
+  )
+print(loo_results)
+```
+
+### Saving the Plot
+
+```{r}
+ggsave(
+  filename = paste0("plots/", "loo_results", ".png"),
+  plot = loo_results,
+  width = 12, height = 6, dpi = 300
+)
+```
+
+# Tables and Plots
+
+## Table 2. Ideology M1
+
+```{r}
+summary(m1_ideo)
+```
+
+## Figure 2. Ideology M1
+
+## Table 3. Party M1
+
+```{r}
+summary(m1_party)
+```
+
+## Figure 3. Party M1
+
+## Table 4. Ideology M3
+
+```{r}
+summary(m3_ideo)
+```
+
+## Figure 4. Ideology M3
+
+## Table 5. Party M3
+
+```{r}
+summary(m3_party)
+```
+
+## Figure 5. Party M3
