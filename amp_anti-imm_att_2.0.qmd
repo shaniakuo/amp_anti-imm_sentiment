@@ -766,6 +766,11 @@ summary(m1_ideo)
 
 # 1. Collapsing response categories into two 
 
+ideology_levels <- c("Very Liberal", "Somewhat Liberal", "Moderate",
+                     "Somewhat Conservative", "Very Conservative")
+x_labels_ideo   <- c("Very\nLiberal", "Somewhat\nLiberal", "Moderate",
+                     "Somewhat\nConservative", "Very\nConservative")
+
 sum_m1_ideo <- aap_m1_ideo |> 
   mutate(
     response_collapsed = case_when(
@@ -773,7 +778,7 @@ sum_m1_ideo <- aap_m1_ideo |>
       response %in% c("Strongly disagree", "Somewhat disagree")       ~ "Disagree"
     )
   ) |> 
-  filter(!is.na(response_collapsed)) |> 
+  filter(response_collapsed == "Agree") |>
   group_by(race, political_position, .draw, response_collapsed) |> 
   summarise(.epred = sum(.epred), .groups = "drop") |> 
   group_by(race, political_position, response_collapsed) |> 
@@ -782,16 +787,19 @@ sum_m1_ideo <- aap_m1_ideo |>
     lower = quantile(.epred, 0.025),
     upper = quantile(.epred, 0.975),
     .groups = "drop"
-  ) 
+  ) |> 
+    mutate(political_position = factor(political_position,
+                                     levels = ideology_levels,
+                                     labels = x_labels_ideo))
 
 
 # 2. Plotting
 
+
 f2 <- ggplot(sum_m1_ideo, 
        aes(x = political_position, y = mean,
          color = race, 
-         linetype = response_collapsed, 
-         group = interaction(race, response_collapsed))) +
+         group = race)) +
          geom_ribbon(aes(ymin = lower, ymax = upper, fill = race),
               alpha = 0.10, color = NA) +
            geom_line(linewidth = 0.8) +
@@ -805,16 +813,16 @@ f2 <- ggplot(sum_m1_ideo,
                                "Black"    = "#0072B2",
                                "Hispanic" = "#009E73"),
                     name = "Race") +
-           scale_linetype_manual(values = c("Agree" = "solid", "Disagree" = "dashed"),
-                        name = "Response") +
            scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
            labs(title = "M1: Limit Immigration \u2014 Ideology",
                 x = NULL,
-                y = "Predicted Probability") +
+                y = "Predicted Probability of Agreeing") +
            theme_bw(base_size = 11) +
   theme(legend.position  = "bottom",
         panel.grid.minor = element_blank(),
         plot.title       = element_text(size = 13, face = "bold"))
+
+print(f2)
 ```
 
 ## Table 3. Party M1
@@ -826,7 +834,65 @@ summary(m1_party)
 ## Figure 3. Party M1
 
 ```{r}
+# 1. Collapsing response categories into two 
 
+party_levels   <- c("Democrat", "Lean Democrat", "Don't Lean/Independent/None",
+                    "Lean Republican", "Republican")
+x_labels_party <- c("Democrat", "Lean\nDemocrat", "Independent",
+                    "Lean\nRepublican", "Republican")
+
+sum_m1_party <- aap_m1_party |> 
+  mutate(
+    response_collapsed = case_when(
+      response %in% c("Strongly agree", "Somewhat agree")       ~ "Agree",
+      response %in% c("Strongly disagree", "Somewhat disagree")       ~ "Disagree"
+    )
+  ) |> 
+  filter(response_collapsed == "Agree") |>
+  group_by(race, political_position, .draw, response_collapsed) |> 
+  summarise(.epred = sum(.epred), .groups = "drop") |> 
+  group_by(race, political_position, response_collapsed) |> 
+  summarise(
+    mean = mean(.epred),
+    lower = quantile(.epred, 0.025),
+    upper = quantile(.epred, 0.975),
+    .groups = "drop"
+  ) |> 
+    mutate(political_position = factor(political_position,
+                                     levels = party_levels,
+                                     labels = x_labels_party))
+
+
+# 2. Plotting
+
+
+f3 <- ggplot(sum_m1_party, 
+       aes(x = political_position, y = mean,
+         color = race, 
+         group = race)) +
+         geom_ribbon(aes(ymin = lower, ymax = upper, fill = race),
+              alpha = 0.10, color = NA) +
+           geom_line(linewidth = 0.8) +
+           scale_color_manual(values = c("White"    = "#999999",
+                                "AAPI"     = "#E69F00",
+                                "Black"    = "#0072B2",
+                                "Hispanic" = "#009E73"),
+                     name = "Race") +
+  scale_fill_manual(values = c("White"    = "#999999",
+                               "AAPI"     = "#E69F00",
+                               "Black"    = "#0072B2",
+                               "Hispanic" = "#009E73"),
+                    name = "Race") +
+           scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+           labs(title = "M1: Limit Immigration \u2014 Party Identification",
+                x = NULL,
+                y = "Predicted Probability of Agreeing") +
+           theme_bw(base_size = 11) +
+  theme(legend.position  = "bottom",
+        panel.grid.minor = element_blank(),
+        plot.title       = element_text(size = 13, face = "bold"))
+
+print(f3)
 ```
 
 ## Table 4. Ideology M3
@@ -838,7 +904,65 @@ summary(m3_ideo)
 ## Figure 4. Ideology M3
 
 ```{r}
+# 1. Collapsing response categories into two 
 
+ideology_levels <- c("Very Liberal", "Somewhat Liberal", "Moderate",
+                     "Somewhat Conservative", "Very Conservative")
+x_labels_ideo   <- c("Very\nLiberal", "Somewhat\nLiberal", "Moderate",
+                     "Somewhat\nConservative", "Very\nConservative")
+
+sum_m3_ideo <- aap_m3_ideo |> 
+  mutate(
+    response_collapsed = case_when(
+      response %in% c("Strongly agree", "Somewhat agree")       ~ "Agree",
+      response %in% c("Strongly disagree", "Somewhat disagree")       ~ "Disagree"
+    )
+  ) |> 
+  filter(response_collapsed == "Agree") |>
+  group_by(race, political_position, .draw, response_collapsed) |> 
+  summarise(.epred = sum(.epred), .groups = "drop") |> 
+  group_by(race, political_position, response_collapsed) |> 
+  summarise(
+    mean = mean(.epred),
+    lower = quantile(.epred, 0.025),
+    upper = quantile(.epred, 0.975),
+    .groups = "drop"
+  ) |> 
+    mutate(political_position = factor(political_position,
+                                     levels = ideology_levels,
+                                     labels = x_labels_ideo))
+
+
+# 2. Plotting
+
+
+f4 <- ggplot(sum_m3_ideo, 
+       aes(x = political_position, y = mean,
+         color = race, 
+         group = race)) +
+         geom_ribbon(aes(ymin = lower, ymax = upper, fill = race),
+              alpha = 0.10, color = NA) +
+           geom_line(linewidth = 0.8) +
+           scale_color_manual(values = c("White"    = "#999999",
+                                "AAPI"     = "#E69F00",
+                                "Black"    = "#0072B2",
+                                "Hispanic" = "#009E73"),
+                     name = "Race") +
+  scale_fill_manual(values = c("White"    = "#999999",
+                               "AAPI"     = "#E69F00",
+                               "Black"    = "#0072B2",
+                               "Hispanic" = "#009E73"),
+                    name = "Race") +
+           scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+           labs(title = "M3: Refugees Fleeing Persecution \u2014 Ideology",
+                x = NULL,
+                y = "Predicted Probability of Agreeing") +
+           theme_bw(base_size = 11) +
+  theme(legend.position  = "bottom",
+        panel.grid.minor = element_blank(),
+        plot.title       = element_text(size = 13, face = "bold"))
+
+print(f4)
 ```
 
 ## Table 5. Party M3
@@ -848,3 +972,65 @@ summary(m3_party)
 ```
 
 ## Figure 5. Party M3
+
+```{r}
+# 1. Collapsing response categories into two 
+
+party_levels   <- c("Democrat", "Lean Democrat", "Don't Lean/Independent/None",
+                    "Lean Republican", "Republican")
+x_labels_party <- c("Democrat", "Lean\nDemocrat", "Independent",
+                    "Lean\nRepublican", "Republican")
+
+sum_m3_party <- aap_m3_party |> 
+  mutate(
+    response_collapsed = case_when(
+      response %in% c("Strongly agree", "Somewhat agree")       ~ "Agree",
+      response %in% c("Strongly disagree", "Somewhat disagree")       ~ "Disagree"
+    )
+  ) |> 
+  filter(response_collapsed == "Agree") |>
+  group_by(race, political_position, .draw, response_collapsed) |> 
+  summarise(.epred = sum(.epred), .groups = "drop") |> 
+  group_by(race, political_position, response_collapsed) |> 
+  summarise(
+    mean = mean(.epred),
+    lower = quantile(.epred, 0.025),
+    upper = quantile(.epred, 0.975),
+    .groups = "drop"
+  ) |> 
+    mutate(political_position = factor(political_position,
+                                     levels = party_levels,
+                                     labels = x_labels_party))
+
+
+# 2. Plotting
+
+
+f5 <- ggplot(sum_m3_party, 
+       aes(x = political_position, y = mean,
+         color = race, 
+         group = race)) +
+         geom_ribbon(aes(ymin = lower, ymax = upper, fill = race),
+              alpha = 0.10, color = NA) +
+           geom_line(linewidth = 0.8) +
+           scale_color_manual(values = c("White"    = "#999999",
+                                "AAPI"     = "#E69F00",
+                                "Black"    = "#0072B2",
+                                "Hispanic" = "#009E73"),
+                     name = "Race") +
+  scale_fill_manual(values = c("White"    = "#999999",
+                               "AAPI"     = "#E69F00",
+                               "Black"    = "#0072B2",
+                               "Hispanic" = "#009E73"),
+                    name = "Race") +
+           scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+           labs(title = "M3: Refugees Fleeing Persecution \u2014 Party Identification",
+                x = NULL,
+                y = "Predicted Probability of Agreeing") +
+           theme_bw(base_size = 11) +
+  theme(legend.position  = "bottom",
+        panel.grid.minor = element_blank(),
+        plot.title       = element_text(size = 13, face = "bold"))
+
+print(f5)
+```
