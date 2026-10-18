@@ -455,7 +455,7 @@ priors <- c(
 )
 ```
 
-## Model 1
+## Model 1 (Don't compile if models loaded already work)
 
 ```{r}
 m1_ideo <- brms::brm(
@@ -500,7 +500,7 @@ m1_additive <- brms::brm(
 
 ```
 
-## Model 2
+## Model 2 (Don't compile if models loaded already work)
 
 ```{r}
 m2_ideo <- brms::brm(
@@ -545,7 +545,7 @@ m2_additive <- brms::brm(
 
 ```
 
-## Model 3
+## Model 3 (Don't compile if models loaded already work)
 
 ```{r}
 m3_ideo <- brms::brm(
@@ -590,7 +590,7 @@ m3_additive <- brms::brm(
 
 ```
 
-## Model 4
+## Model 4 (Don't compile if models loaded already work)
 
 ```{r}
 m4_ideo <- brms::brm(
@@ -635,7 +635,7 @@ m4_additive <- brms::brm(
 
 ```
 
-## Save Models
+## Save Models (Don't run if models loaded already work)
 
 ```{r}
 save(m1_ideo, m1_party, m1_both, m1_additive,
@@ -682,128 +682,72 @@ print(loo_m4)
 
 ```
 
-## Hard-Coding the LOO Comparisons for Plotting
+## Figure 1. LOO-CV
 
 ```{r}
-loo_m1_df <- as.data.frame(loo_m1) |>
-  tibble::rownames_to_column("model_var") |>
-  mutate(suffix = sub("^m[0-9]+_", "", model_var))
-if (!isTRUE(all.equal(loo_m1_df$elpd_diff[loo_m1_df$suffix == "both"], 0, tolerance = 1e-6))) {
-  warning("M1: Limit Immigration: the 'both' model is NOT the best-fitting model in loo_m1 -- the chart's 'relative to best model (Both)' framing may be wrong for this outcome, check loo_compare() output directly.")
-}
-loo_m1_df <- loo_m1_df |>
-  filter(suffix %in% c("ideo", "party", "additive")) |>
-  mutate(
-    outcome = "M1: Limit Immigration",
-    model = case_when(
-      suffix == "ideo"     ~ "Ideology Only",
-      suffix == "party"    ~ "Party ID Only",
-      suffix == "additive" ~ "Additive"
-    )
-  ) |>
-  select(outcome, model, elpd_diff, se_diff)
+
+# M1
+df_m1 <- as.data.frame(loo_m1)
+df_m1$model <- sub("^m1_", "", rownames(df_m1))
+df_m1$set <- "M1: Limit Immigration"
 
 # M2
-loo_m2_df <- as.data.frame(loo_m2) |>
-  tibble::rownames_to_column("model_var") |>
-  mutate(suffix = sub("^m[0-9]+_", "", model_var))
-if (!isTRUE(all.equal(loo_m2_df$elpd_diff[loo_m2_df$suffix == "both"], 0, tolerance = 1e-6))) {
-  warning("M2: Learn English: the 'both' model is NOT the best-fitting model in loo_m2 -- the chart's 'relative to best model (Both)' framing may be wrong for this outcome, check loo_compare() output directly.")
-}
-loo_m2_df <- loo_m2_df |>
-  filter(suffix %in% c("ideo", "party", "additive")) |>
-  mutate(
-    outcome = "M2: Learn English",
-    model = case_when(
-      suffix == "ideo"     ~ "Ideology Only",
-      suffix == "party"    ~ "Party ID Only",
-      suffix == "additive" ~ "Additive"
-    )
-  ) |>
-  select(outcome, model, elpd_diff, se_diff)
+df_m2 <- as.data.frame(loo_m2)
+df_m2$model <- sub("^m2_", "", rownames(df_m2))
+df_m2$set <- "M2: Learn English"
 
 # M3
-loo_m3_df <- as.data.frame(loo_m3) |>
-  tibble::rownames_to_column("model_var") |>
-  mutate(suffix = sub("^m[0-9]+_", "", model_var))
-if (!isTRUE(all.equal(loo_m3_df$elpd_diff[loo_m3_df$suffix == "both"], 0, tolerance = 1e-6)))  
-  
-  loo_m3_df <- loo_m3_df |>
-  filter(suffix %in% c("ideo", "party", "additive")) |>
-  mutate(
-    outcome = "M3: Persecution Refugees",
-    model = case_when(
-      suffix == "ideo"     ~ "Ideology Only",
-      suffix == "party"    ~ "Party ID Only",
-      suffix == "additive" ~ "Additive"
-    )
-  ) |>
-  select(outcome, model, elpd_diff, se_diff)
+df_m3 <- as.data.frame(loo_m3)
+df_m3$model <- sub("^m3_", "", rownames(df_m3))
+df_m3$set <- "M3: Refugees Fleeing Persecution"
 
 # M4
-loo_m4_df <- as.data.frame(loo_m4) |>
-  tibble::rownames_to_column("model_var") |>
-  mutate(suffix = sub("^m[0-9]+_", "", model_var))
+df_m4 <- as.data.frame(loo_m4)
+df_m4$model <- sub("^m4_", "", rownames(df_m4))
+df_m4$set <- "M4: Do Not Break Law"
 
-loo_m4_df <- loo_m4_df |>
-  filter(suffix %in% c("ideo", "party", "additive")) |>
-  mutate(
-    outcome = "M4: Do Not Break Law",
-    model = case_when(
-      suffix == "ideo"     ~ "Ideology Only",
-      suffix == "party"    ~ "Party ID Only",
-      suffix == "additive" ~ "Additive"
-    )
-  ) |>
-  select(outcome, model, elpd_diff, se_diff)
-```
+loo_all <- rbind(df_m1, df_m2, df_m3, df_m4)
 
-## Figure 1. LOO Plot
+# Check: should list exactly "additive" "both" "ideo" "party"
+unique(loo_all$model)
 
-```{r}
-loo_results <- bind_rows(loo_m1_df, loo_m2_df, loo_m3_df, loo_m4_df) |>
-  mutate(
-    model = factor(model,
-                   levels = c("Ideology Only", 
-                              "Party ID Only", 
-                              "Additive")),
-    outcome = factor(outcome,
-                     levels = c("M1: Limit Immigration",
-                                "M2: Learn English",
-                                "M3: Persecution Refugees",
-                                "M4: Do Not Break Law"))
-  ) |>
-  ggplot(aes(x = elpd_diff, y = model, color = model)) +
-  geom_point(size = 3) +
-  geom_errorbarh(
-    aes(xmin = elpd_diff - 2*se_diff, 
-        xmax = elpd_diff + 2*se_diff),
-    height = 0.2
-  ) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
-  facet_wrap(~ outcome, ncol = 1) +
-  scale_color_manual(values = c(
-    "Ideology Only" = "#E69F00",
-    "Party ID Only" = "#0072B2", 
-    "Additive" = "#009E73"
-  )) +
-  theme_minimal() +
-  theme(legend.position = "none") +
-  labs(
-    title = "Model Comparison: Ideology vs Party ID",
-    subtitle = "ELPD difference relative to best model (Both)",
-    x = "ELPD Difference (higher = worse fit)",
-    y = NULL
-  )
-print(loo_results)
+# Readable labels; levels run bottom-to-top on the y-axis
+loo_all$model <- factor(loo_all$model,
+                        levels = c("ideo", "party", "additive", "both"),
+                        labels = c("Ideology Only", "Party ID Only", "Additive", "Both"))
+
+# Panel order top-to-bottom
+loo_all$set <- factor(loo_all$set,
+                      levels = c("M1: Limit Immigration", "M2: Learn English",
+                                 "M3: Refugees Fleeing Persecution", "M4: Do Not Break Law"))
+
+f1 <- ggplot(loo_all, aes(x = elpd_diff, y = model, color = model)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_errorbar(aes(xmin = elpd_diff - 2 * se_diff,
+                    xmax = elpd_diff + 2 * se_diff),
+                width = 0.15) +
+  geom_point(size = 3.5) +
+  facet_wrap(~ set, ncol = 1) +
+  scale_color_manual(values = c("Ideology Only" = "#E69F00",
+                                "Party ID Only" = "#0072B2",
+                                "Additive"      = "#009E73",
+                                "Both"          = "grey20")) +
+  labs(title = "Model Comparison: Ideology vs Party ID",
+       subtitle = "ELPD difference relative to best model (±2 SE)",
+       x = "ELPD Difference (lower = worse fit)",
+       y = NULL) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none",
+        panel.grid.minor = element_blank(),
+        plot.title.position = "plot")
 ```
 
 ### Saving the Plot
 
 ```{r}
 ggsave(
-  filename = paste0("plots/", "loo_results", ".png"),
-  plot = loo_results,
+  filename = paste0("plots/", "f1", ".png"),
+  plot = f1,
   width = 12, height = 6, dpi = 300
 )
 ```
@@ -818,6 +762,61 @@ summary(m1_ideo)
 
 ## Figure 2. Ideology M1
 
+```{r}
+
+# 1. Collapsing response categories into two 
+
+sum_m1_ideo <- aap_m1_ideo |> 
+  mutate(
+    response_collapsed = case_when(
+      response %in% c("Strongly agree", "Somewhat agree")       ~ "Agree",
+      response %in% c("Strongly disagree", "Somewhat disagree")       ~ "Disagree"
+    )
+  ) |> 
+  filter(!is.na(response_collapsed)) |> 
+  group_by(race, political_position, .draw, response_collapsed) |> 
+  summarise(.epred = sum(.epred), .groups = "drop") |> 
+  group_by(race, political_position, response_collapsed) |> 
+  summarise(
+    mean = mean(.epred),
+    lower = quantile(.epred, 0.025),
+    upper = quantile(.epred, 0.975),
+    .groups = "drop"
+  ) 
+
+
+# 2. Plotting
+
+f2 <- ggplot(sum_m1_ideo, 
+       aes(x = political_position, y = mean,
+         color = race, 
+         linetype = response_collapsed, 
+         group = interaction(race, response_collapsed))) +
+         geom_ribbon(aes(ymin = lower, ymax = upper, fill = race),
+              alpha = 0.10, color = NA) +
+           geom_line(linewidth = 0.8) +
+           scale_color_manual(values = c("White"    = "#999999",
+                                "AAPI"     = "#E69F00",
+                                "Black"    = "#0072B2",
+                                "Hispanic" = "#009E73"),
+                     name = "Race") +
+  scale_fill_manual(values = c("White"    = "#999999",
+                               "AAPI"     = "#E69F00",
+                               "Black"    = "#0072B2",
+                               "Hispanic" = "#009E73"),
+                    name = "Race") +
+           scale_linetype_manual(values = c("Agree" = "solid", "Disagree" = "dashed"),
+                        name = "Response") +
+           scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+           labs(title = "M1: Limit Immigration \u2014 Ideology",
+                x = NULL,
+                y = "Predicted Probability") +
+           theme_bw(base_size = 11) +
+  theme(legend.position  = "bottom",
+        panel.grid.minor = element_blank(),
+        plot.title       = element_text(size = 13, face = "bold"))
+```
+
 ## Table 3. Party M1
 
 ```{r}
@@ -826,6 +825,10 @@ summary(m1_party)
 
 ## Figure 3. Party M1
 
+```{r}
+
+```
+
 ## Table 4. Ideology M3
 
 ```{r}
@@ -833,6 +836,10 @@ summary(m3_ideo)
 ```
 
 ## Figure 4. Ideology M3
+
+```{r}
+
+```
 
 ## Table 5. Party M3
 
