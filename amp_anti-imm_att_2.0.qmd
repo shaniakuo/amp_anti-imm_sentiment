@@ -823,6 +823,15 @@ f2 <- ggplot(sum_m1_ideo,
         plot.title       = element_text(size = 13, face = "bold"))
 
 print(f2)
+
+# 3. Save Plots
+
+ggsave(
+  filename = paste0("plots/", "f2", ".png"),
+  plot = f2,
+  width = 12, height = 6, dpi = 300
+)
+
 ```
 
 ## Table 3. Party M1
@@ -893,6 +902,15 @@ f3 <- ggplot(sum_m1_party,
         plot.title       = element_text(size = 13, face = "bold"))
 
 print(f3)
+
+
+# 3. Save Plots
+
+ggsave(
+  filename = paste0("plots/", "f3", ".png"),
+  plot = f3,
+  width = 12, height = 6, dpi = 300
+)
 ```
 
 ## Table 4. Ideology M3
@@ -918,7 +936,7 @@ sum_m3_ideo <- aap_m3_ideo |>
       response %in% c("Strongly disagree", "Somewhat disagree")       ~ "Disagree"
     )
   ) |> 
-  filter(response_collapsed == "Agree") |>
+  filter(response_collapsed == "Disagree") |>
   group_by(race, political_position, .draw, response_collapsed) |> 
   summarise(.epred = sum(.epred), .groups = "drop") |> 
   group_by(race, political_position, response_collapsed) |> 
@@ -954,15 +972,23 @@ f4 <- ggplot(sum_m3_ideo,
                                "Hispanic" = "#009E73"),
                     name = "Race") +
            scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
-           labs(title = "M3: Refugees Fleeing Persecution \u2014 Ideology",
+           labs(title = "M3: Opposition to Humanitarian Access \u2014 Ideology",
                 x = NULL,
-                y = "Predicted Probability of Agreeing") +
+                y = "Predicted Probability of Disagreeing") +
            theme_bw(base_size = 11) +
   theme(legend.position  = "bottom",
         panel.grid.minor = element_blank(),
         plot.title       = element_text(size = 13, face = "bold"))
 
 print(f4)
+
+# 3. Save Plots
+
+ggsave(
+  filename = paste0("plots/", "f4", ".png"),
+  plot = f4,
+  width = 12, height = 6, dpi = 300
+)
 ```
 
 ## Table 5. Party M3
@@ -988,7 +1014,7 @@ sum_m3_party <- aap_m3_party |>
       response %in% c("Strongly disagree", "Somewhat disagree")       ~ "Disagree"
     )
   ) |> 
-  filter(response_collapsed == "Agree") |>
+  filter(response_collapsed == "Disagree") |>
   group_by(race, political_position, .draw, response_collapsed) |> 
   summarise(.epred = sum(.epred), .groups = "drop") |> 
   group_by(race, political_position, response_collapsed) |> 
@@ -1024,13 +1050,21 @@ f5 <- ggplot(sum_m3_party,
                                "Hispanic" = "#009E73"),
                     name = "Race") +
            scale_y_continuous(limits = c(0, 1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
-           labs(title = "M3: Refugees Fleeing Persecution \u2014 Party Identification",
+           labs(title = "M3: Opposition to Humanitarian Access \u2014 Party Identification",
                 x = NULL,
-                y = "Predicted Probability of Agreeing") +
+                y = "Predicted Probability of Disagreeing") +
            theme_bw(base_size = 11) +
   theme(legend.position  = "bottom",
         panel.grid.minor = element_blank(),
         plot.title       = element_text(size = 13, face = "bold"))
 
 print(f5)
+
+# 3. Save Plots
+
+ggsave(
+  filename = paste0("plots/", "f5", ".png"),
+  plot = f5,
+  width = 12, height = 6, dpi = 300
+)
 ```
