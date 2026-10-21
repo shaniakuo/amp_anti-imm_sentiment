@@ -1095,3 +1095,27 @@ ggsave(
   width = 12, height = 6, dpi = 300
 )
 ```
+
+## Numbers
+
+```{r}
+# Limit immigration: P(Agree) among Very Liberal, by race
+sum_m1_ideo |>
+  filter(political_position == "Very\nLiberal") |>
+  mutate(
+    mean_pct  = round(mean * 100),
+    lower_pct = round(lower * 100),
+    upper_pct = round(upper * 100)
+  ) |>
+  select(race, mean_pct, lower_pct, upper_pct)
+
+# Opposition to refugee access: P(Disagree) among Very Liberal, by race
+sum_m3_ideo |>
+  filter(political_position == "Very\nLiberal") |>
+  mutate(
+    mean_pct  = round(mean * 100),
+    lower_pct = round(lower * 100),
+    upper_pct = round(upper * 100)
+  ) |>
+  select(race, mean_pct, lower_pct, upper_pct)
+```
