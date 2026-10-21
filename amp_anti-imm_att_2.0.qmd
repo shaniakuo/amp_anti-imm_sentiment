@@ -7,7 +7,7 @@ execute:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '/Users/shaniakuo/Library/CloudStorage/GoogleDrive-kuo00063@umn.edu/.shortcut-targets-by-id/1mv_yKA1EnZV85eFlImCcbT0SMYFbxVBv/AMP Master Drive/AMP Immigration')
+knitr::opts_knit$set(root.dir = '/Users/shaniakuo/Library/CloudStorage/GoogleDrive-kuo00063@umn.edu/.shortcut-targets-by-id/1mv_yKA1EnZV85eFlImCcbT0SMYFbxVBv/AMP Master Drive/Anti-Immigrant Attitudes')
 ```
 
 ## Setup
@@ -30,10 +30,6 @@ library(modelr)
 library(cowplot)
 library(gmodels)
 library(patchwork)
-```
-
-```{r}
-getwd()
 ```
 
 # Load Data
@@ -680,6 +676,37 @@ m4_additive <- add_criterion(m4_additive, "loo")
 loo_m4 <- loo_compare(m4_ideo, m4_party, m4_both, m4_additive)
 print(loo_m4)
 
+```
+
+## LOO Party vs Ideology
+
+```{r}
+# Party vs. ideology, head-to-head
+loo_m1_pi <- loo_compare(m1_ideo, m1_party)
+print(loo_m1_pi)
+
+loo_m2_pi <- loo_compare(m2_ideo, m2_party)
+print(loo_m2_pi)
+
+loo_m3_pi <- loo_compare(m3_ideo, m3_party)
+print(loo_m3_pi)
+
+loo_m4_pi <- loo_compare(m4_ideo, m4_party)
+print(loo_m4_pi)
+
+# Single-predictor models vs. additive
+# (this is the comparison behind "each predictor adds independent information")
+loo_m1_add <- loo_compare(m1_additive, m1_ideo, m1_party)
+print(loo_m1_add)
+
+loo_m2_add <- loo_compare(m2_additive, m2_ideo, m2_party)
+print(loo_m2_add)
+
+loo_m3_add <- loo_compare(m3_additive, m3_ideo, m3_party)
+print(loo_m3_add)
+
+loo_m4_add <- loo_compare(m4_additive, m4_ideo, m4_party)
+print(loo_m4_add)
 ```
 
 ## Figure 1. LOO-CV
